@@ -2,7 +2,8 @@ import pandas as pd
 import numpy as np
 import os
 import tensorflow as tf
-
+from sklearn.model_selection import train_test_split
+import functools
 ####### STUDENTS FILL THIS OUT ######
 #Question 3
 def reduce_dimension_ndc(df, ndc_df):
@@ -12,7 +13,9 @@ def reduce_dimension_ndc(df, ndc_df):
     return:
         df: pandas dataframe, output dataframe with joined generic drug name
     '''
-    return df
+    df1 = pd.merge(df, ndc_df[['NDC_Code', 'Non-proprietary Name']], how = 'left', left_on = 'ndc_code', right_on = 'NDC_Code')
+    df1 = df1.rename(columns = {'Non-proprietary Name' : 'generic_drug_name'})
+    return df1
 
 #Question 4
 def select_first_encounter(df):
@@ -21,7 +24,9 @@ def select_first_encounter(df):
     return:
         - first_encounter_df: pandas dataframe, dataframe with only the first encounter for a given patient
     '''
-    return first_encounter_df
+    df1 = df.sort_values(['encounter_id'], ascending = True)
+    df1 = df1.drop_duplicates(subset = 'patient_nbr', keep = 'first')
+    return df1
 
 
 #Question 6
@@ -35,6 +40,19 @@ def patient_dataset_splitter(df, patient_key='patient_nbr'):
      - validation: pandas dataframe,
      - test: pandas dataframe,
     '''
+    train_frac, val_frac, test_frac = 0.6, 0.2, 0.2
+    df = df.iloc[np.random.permutation(len(df))]
+    unique_values = df[patient_key].unique()
+    total_values = len(unique_values)
+    train_size = int(train_frac * total_values)
+    val_size = int(val_frac * total_values)
+    test_size = int(test_frac * total_values)
+    train = df[df[patient_key].isin(unique_values[:train_size])]
+    validation = df[df[patient_key].isin(unique_values[train_size: train_size+val_size])]
+    test = df[df[patient_key].isin(unique_values[train_size+val_size:])]
+    return train, validation, test
+
+    
     return train, validation, test
 
 #Question 7
@@ -56,6 +74,16 @@ def create_tf_categorical_feature_cols(categorical_col_list,
         tf_categorical_feature_column = tf.feature_column.......
 
         '''
+        vocab_feature = tf.feature_column.categorical_column_with_vocabulary_file(key = c, vocabulary_file = vocab_file_path)
+                                                                     
+        
+        if (c == 'primary_diagnosis_code') or (c == 'other_diagnosis_codes'):
+            tf_categorical_feature_column = tf.feature_column.embedding_column(vocab_feature, dimension = 10)
+       
+        else:
+            tf_categorical_feature_column = tf.feature_column.indicator_column(vocab_feature)
+            
+        
         output_tf_list.append(tf_categorical_feature_column)
     return output_tf_list
 
@@ -78,6 +106,8 @@ def create_tf_numeric_feature(col, MEAN, STD, default_value=0):
     return:
         tf_numeric_feature: tf feature column representation of the input field
     '''
+    normalizer = functools.partial(normalize_numeric_with_zscore, mean = MEAN, std = STD)
+    tf_numeric_feature = tf.feature_column.numeric_column(col, normalizer_fn = normalizer, default_value = default_value, dtype=tf.float64)
     return tf_numeric_feature
 
 #Question 9
@@ -85,8 +115,8 @@ def get_mean_std_from_preds(diabetes_yhat):
     '''
     diabetes_yhat: TF Probability prediction object
     '''
-    m = '?'
-    s = '?'
+    m = diabetes_yhat.mean()
+    s = diabetes_yhat.stddev()
     return m, s
 
 # Question 10
@@ -96,5 +126,7 @@ def get_student_binary_prediction(df, col):
     col: str,  probability mean prediction field
     return:
         student_binary_prediction: pandas dataframe converting input to flattened numpy array and binary labels
+        
     '''
+    student_binary_prediction = df[col].apply(lambda x: 1 if x>=5 else 0).values 
     return student_binary_prediction
