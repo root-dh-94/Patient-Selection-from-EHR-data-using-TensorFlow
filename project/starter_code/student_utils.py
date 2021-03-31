@@ -4,7 +4,7 @@ import os
 import tensorflow as tf
 from sklearn.model_selection import train_test_split
 import functools
-####### STUDENTS FILL THIS OUT ######
+
 #Question 3
 def reduce_dimension_ndc(df, ndc_df):
     '''
@@ -68,12 +68,7 @@ def create_tf_categorical_feature_cols(categorical_col_list,
     output_tf_list = []
     for c in categorical_col_list:
         vocab_file_path = os.path.join(vocab_dir,  c + "_vocab.txt")
-        '''
-        Which TF function allows you to read from a text file and create a categorical feature
-        You can use a pattern like this below...
-        tf_categorical_feature_column = tf.feature_column.......
-
-        '''
+      
         vocab_feature = tf.feature_column.categorical_column_with_vocabulary_file(key = c, vocabulary_file = vocab_file_path)
                                                                      
         
@@ -89,9 +84,7 @@ def create_tf_categorical_feature_cols(categorical_col_list,
 
 #Question 8
 def normalize_numeric_with_zscore(col, mean, std):
-    '''
-    This function can be used in conjunction with the tf feature column for normalization
-    '''
+ 
     return (col - mean)/std
 
 
